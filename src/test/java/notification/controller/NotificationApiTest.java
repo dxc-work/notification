@@ -1,8 +1,10 @@
-package notification;
+package notification.controller;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import notification.entity.User;
+import notification.service.NotificationService;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -38,8 +40,10 @@ public class NotificationApiTest {
 
     private MockMvc mvc;
 
-    private static String toJson(Object object) throws JsonProcessingException {
-        return new ObjectMapper().writeValueAsString(object);
+    private static String toJson(User user) throws JsonProcessingException {
+        ObjectMapper mapper = new ObjectMapper();
+        mapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
+        return mapper.writeValueAsString(user);
     }
 
     @Before
@@ -58,7 +62,7 @@ public class NotificationApiTest {
 
         mvc.perform(MockMvcRequestBuilders.post(urlTemplate)
                 .contentType(MediaType.APPLICATION_JSON_VALUE).content(toJson(user)))
-                .andExpect(status().isOk())
+                .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.username", equalTo(user.getUsername())))
                 .andExpect(jsonPath("$.accessToken", equalTo(user.getAccessToken())))
                 .andExpect(jsonPath("$.creationTime", notNullValue()))
