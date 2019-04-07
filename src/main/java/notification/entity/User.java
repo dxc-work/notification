@@ -5,6 +5,7 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import javax.validation.constraints.NotEmpty;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -73,5 +74,21 @@ public class User {
         if (numOfNotificationsPushed != null) {
             numOfNotificationsPushed.getAndIncrement();
         }
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        User user = (User) o;
+        return username.equals(user.username) &&
+                accessToken.equals(user.accessToken) &&
+                Objects.equals(creationTime, user.creationTime) &&
+                Objects.equals(numOfNotificationsPushed, user.numOfNotificationsPushed);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(username, accessToken, creationTime, numOfNotificationsPushed);
     }
 }

@@ -9,7 +9,6 @@ import notification.exception.UserNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
@@ -19,11 +18,19 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Autowired
     private PushBulletApi pushBulletApi;
+    @Autowired
+    private LocalDateTimeProvider localDateTImeProvider;
     private Map<String, User> users = new HashMap<>();
+
+    //Visible for testing
+    void removeAllUsers() {
+        users.clear();
+
+    }
 
     @Override
     public User registerUser(final User user) {
-        User newUser = User.createNewUser(user, LocalDateTime.now());
+        User newUser = User.createNewUser(user, localDateTImeProvider.now());
         User existingUser = users.get(newUser.getUsername());
         if (existingUser == null) {
             synchronized (this) {
