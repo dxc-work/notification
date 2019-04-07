@@ -19,4 +19,9 @@ public class NotificationServiceImpl implements NotificationService {
         users.put(newUser.getUsername(), newUser);
         return newUser;
     }
+
+    @Override
+    public Collection<User> getAllUsers() {
+        return users.values();
+    }
 }
