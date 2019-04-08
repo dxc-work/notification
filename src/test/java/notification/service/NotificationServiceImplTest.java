@@ -10,7 +10,6 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
@@ -18,12 +17,12 @@ import org.springframework.test.context.junit4.SpringRunner;
 
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
-import java.util.List;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
 
@@ -37,22 +36,25 @@ public class NotificationServiceImplTest {
     private PushBulletApi pushBulletApi;
     @MockBean
     private LocalDateTimeProvider localDateTimeProvider;
+    @MockBean
+    private UserCache userCache;
     @Autowired
     private NotificationServiceImpl notificationService;
 
     @Before
-    public void setUp() throws Exception {
+    public void setUp() {
         when(localDateTimeProvider.now()).thenReturn(FIXED_TIME);
     }
 
     @After
-    public void tearDown() throws Exception {
-        notificationService.removeAllUsers();
+    public void tearDown() {
+        userCache.clear();
     }
 
     @Test
     public void registerUser() {
         User user = new User("username", "accessToken");
+        when(userCache.addNewUser(any())).thenReturn(User.createNewUser(user, FIXED_TIME));
 
         User returnedUser = notificationService.registerUser(user);
 
@@ -64,11 +66,9 @@ public class NotificationServiceImplTest {
 
     @Test(expected = DuplicateUserException.class)
     public void registerUser_duplicate() {
-        User user = new User("username", "accessToken");
+        doThrow(new DuplicateUserException("")).when(userCache).addNewUser(any());
 
-        assertThat(notificationService.registerUser(user), notNullValue());
-
-        notificationService.registerUser(user);
+        notificationService.registerUser(new User("username", "accessToken"));
     }
 
     @Test
@@ -76,8 +76,8 @@ public class NotificationServiceImplTest {
         User user1 = new User("username1", "accessToken");
         User user2 = new User("username2", "accessToken");
 
-        assertThat(notificationService.registerUser(user1), notNullValue());
-        assertThat(notificationService.registerUser(user2), notNullValue());
+        when(userCache.getAllUsers()).thenReturn(Arrays.asList(User.createNewUser(user1, FIXED_TIME),
+                User.createNewUser(user2, FIXED_TIME)));
 
         Collection<User> users = notificationService.getAllUsers();
 
@@ -91,18 +91,15 @@ public class NotificationServiceImplTest {
 
     @Test
     public void pushMessage() {
-        User user = new User("username", "accessToken");
-        assertThat(notificationService.registerUser(user), notNullValue());
+        User user = User.createNewUser(new User("username", "accessToken"), FIXED_TIME);
+        when(userCache.getUser(any())).thenReturn(user);
         Message message = new Message();
         message.setUsername(user.getUsername());
         message.setText("text");
 
         notificationService.pushMessage(message);
 
-        List<User> users = new ArrayList<>(notificationService.getAllUsers());
-
-        assertThat(users, iterableWithSize(1));
-        assertThat(users.get(0).getNumOfNotificationsPushed(), equalTo(1));
+        assertThat(user.getNumOfNotificationsPushed(), equalTo(1));
     }
 
     @Test(expected = UserNotFoundException.class)
@@ -116,13 +113,13 @@ public class NotificationServiceImplTest {
 
     @Test(expected = NotificationFailureException.class)
     public void pushMessage_unexpectedError() {
-        User user = new User("username", "accessToken");
-        assertThat(notificationService.registerUser(user), notNullValue());
+        User user = User.createNewUser(new User("username", "accessToken"), FIXED_TIME);
+        when(userCache.getUser(any())).thenReturn(user);
         Message message = new Message();
         message.setUsername(user.getUsername());
         message.setText("text");
 
-        doThrow(new RuntimeException()).when(pushBulletApi).push(Mockito.any(), Mockito.any());
+        doThrow(new RuntimeException()).when(pushBulletApi).push(any(), any());
 
         notificationService.pushMessage(message);
     }
